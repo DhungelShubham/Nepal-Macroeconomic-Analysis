@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nepal Economic Distress — Early Warning System</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --ink-mid: #444;
+    --ink-light: #777;
+    --ink-faint: #bbb;
+    --paper: #faf9f6;
+    --paper-warm: #f3f1eb;
+    --paper-rule: #e8e4da;
+    --accent: #8b1a1a;
+    --accent-soft: rgba(139,26,26,0.08);
+    --accent-mid: rgba(139,26,26,0.18);
+    --crisis: #c0392b;
+    --crisis-bg: rgba(192,57,43,0.07);
+    --safe: #2c7a4b;
+    --safe-bg: rgba(44,122,75,0.08);
+    --blue: #1a4a7a;
+    --blue-bg: rgba(26,74,122,0.08);
+    --serif: 'Lora', Georgia, serif;
+    --sans: 'Source Sans 3', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .masthead {
+    border-bottom: 2px solid var(--ink);
+    padding: 2.5rem 0 1.5rem;
+    margin-bottom: 0;
+    background: var(--paper);
+  }
+  .masthead-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+  .journal-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .journal-tag::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--paper-rule);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--ink);
+    margin-bottom: 0.75rem;
+    max-width: 780px;
+  }
+  .subtitle {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--ink-mid);
+    margin-bottom: 1.5rem;
+    max-width: 680px;
+  }
+  .meta-row {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--ink-light);
+    font-family: var(--mono);
+  }
+  .meta-row span { display: flex; align-items: center; gap: 6px; }
+
+  /* Nav tabs */
+  .tab-bar {
+    border-bottom: 1px solid var(--paper-rule);
+    background: var(--paper);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .tab-bar-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    gap: 0;
+  }
+  .tab {
+    padding: 0.9rem 1.4rem;
+    font-size: 13px;
+    font-family: var(--sans);
+    font-weight: 500;
+    color: var(--ink-light);
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+    letter-spacing: 0.01em;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Main layout */
+  .main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Summary cards */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px;
+    border: 1px solid var(--paper-rule);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    background: var(--paper-rule);
+  }
+  .stat-card {
+    background: var(--paper);
+    padding: 1.25rem 1.5rem;
+  }
+  .stat-label {
+    font-size: 11px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-light);
+    margin-bottom: 0.4rem;
+  }
+  .stat-value {
+    font-family: var(--serif);
+    font-size: 1.9rem;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .stat-value.crisis { color: var(--crisis); }
+  .stat-sub {
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+
+  /* Chart panels */
+  .chart-panel {
+    border: 1px solid var(--paper-rule);
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .chart-header {
+    padding: 1rem 1.5rem 0.75rem;
+    border-bottom: 1px solid var(--paper-rule);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .chart-title {
+    font-family: var(--serif);
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .chart-note {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--ink-light);
+  }
+  .chart-body { padding: 1.25rem 1.5rem; }
+  .chart-body canvas { display: block; }
+
+  /* Toggle pills */
+  .toggle-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 0.75rem 1.5rem;
+    background: var(--paper-warm);
+    border-bottom: 1px solid var(--paper-rule);
+  }
+  .pill {
+    padding: 3px 12px;
+    font-size: 11px;
+    font-family: var(--mono);
+    border: 1px solid var(--paper-rule);
+    border-radius: 20px;
+    background: var(--paper);
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--ink-mid);
+  }
+  .pill:hover { border-color: var(--ink-mid); }
+  .pill.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .pill.crisis-pill.on { background: var(--crisis); border-color: var(--crisis); }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--ink-mid);
+    padding: 0.6rem 1.5rem;
+    border-top: 1px solid var(--paper-rule);
+  }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .legend-line {
+    width: 20px; height: 2px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .legend-box-sm {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  /* Data table */
+  .table-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .search-box {
+    padding: 6px 12px;
+    font-size: 13px;
+    font-family: var(--mono);
+    border: 1px solid var(--paper-rule);
+    border-radius: 4px;
+    background: var(--paper);
+    color: var(--ink);
+    width: 200px;
+    outline: none;
+  }
+  .search-box:focus { border-color: var(--ink-mid); }
+  .filter-btn {
+    padding: 6px 14px;
+    font-size: 11px;
+    font-family: var(--mono);
+    border: 1px solid var(--paper-rule);
+    border-radius: 4px;
+    background: var(--paper);
+    cursor: pointer;
+    color: var(--ink-mid);
+    transition: all 0.15s;
+  }
+  .filter-btn:hover, .filter-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .filter-btn.crisis-filter.active { background: var(--crisis); border-color: var(--crisis); }
+
+  .data-table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-family: var(--mono);
+  }
+  thead th {
+    text-align: right;
+    padding: 8px 12px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    border-bottom: 2px solid var(--ink);
+    background: var(--paper-warm);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  thead th:first-child { text-align: left; }
+  thead th:hover { color: var(--ink); }
+  thead th .sort-arrow { margin-left: 4px; opacity: 0.4; }
+  thead th.sorted .sort-arrow { opacity: 1; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--paper-rule);
+    transition: background 0.1s;
+  }
+  tbody tr:hover { background: var(--paper-warm); }
+  tbody tr.crisis-row { background: var(--crisis-bg); }
+  tbody tr.crisis-row:hover { background: rgba(192,57,43,0.13); }
+
+  td {
+    padding: 7px 12px;
+    text-align: right;
+    color: var(--ink-mid);
+  }
+  td:first-child { text-align: left; color: var(--ink); font-weight: 500; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .badge-crisis { background: var(--crisis-bg); color: var(--crisis); border: 1px solid rgba(192,57,43,0.2); }
+  .badge-safe { background: var(--safe-bg); color: var(--safe); border: 1px solid rgba(44,122,75,0.2); }
+
+  .trigger-pip {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin: 0 1px;
+  }
+  .pip-on { background: var(--crisis); }
+  .pip-off { background: var(--paper-rule); }
+
+  .table-footer {
+    margin-top: 0.75rem;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* Threshold reference */
+  .threshold-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1px;
+    border: 1px solid var(--paper-rule);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--paper-rule);
+    margin-bottom: 2rem;
+  }
+  .threshold-card {
+    background: var(--paper);
+    padding: 1rem 1.25rem;
+  }
+  .threshold-label {
+    font-size: 10px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-light);
+    margin-bottom: 0.3rem;
+  }
+  .threshold-rule {
+    font-family: var(--serif);
+    font-size: 0.95rem;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  /* Section intro */
+  .section-intro {
+    font-family: var(--serif);
+    font-size: 0.95rem;
+    color: var(--ink-mid);
+    font-style: italic;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--paper-rule);
+    max-width: 720px;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 600px) {
+    .main { padding: 1rem; }
+    .masthead-inner { padding: 0 1rem; }
+    .tab { padding: 0.75rem 0.9rem; font-size: 12px; }
+    h1 { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-inner">
+    <h1>Nepal Macroeconomic Analysis</h1>
+    <p class="subtitle">A threshold-based crisis labeling and indicator analysis for economic distress prediction, 1995–2024.</p>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab-bar-inner">
+    <button class="tab active" onclick="switchTab('charts', this)">Indicator charts</button>
+    <button class="tab" onclick="switchTab('table', this)">Data table</button>
+    <button class="tab" onclick="switchTab('methodology', this)">Methodology</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- CHARTS SECTION -->
+  <div class="section active" id="sec-charts">
+    <p class="section-intro">
+      Five macroeconomic indicators are tracked across the 30-year panel. Crisis years (shaded in red) are defined by any two of five threshold triggers firing simultaneously. Hover over any data point for exact values.
+    </p>
+
+    <!-- GDP + Inflation -->
+    <div class="chart-panel">
+      <div class="chart-header">
+        <span class="chart-title">GDP growth & inflation (%)</span>
+        <span class="chart-note">hover for values · crisis years shaded</span>
+      </div>
+      <div class="toggle-row">
+        <button class="pill on" id="p-gdp" onclick="toggleC1(0,this)">GDP growth</button>
+        <button class="pill on" id="p-inf" onclick="toggleC1(1,this)">Inflation</button>
+        <button class="pill crisis-pill on" id="p-shade" onclick="toggleC1(2,this)">Crisis shading</button>
+      </div>
+      <div class="chart-body">
+        <div style="position:relative;height:260px;">
+          <canvas id="c1" role="img" aria-label="GDP growth and inflation 1995-2024 with crisis years shaded">GDP and inflation trends.</canvas>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="legend-line" style="background:#1a4a7a;"></span>GDP growth</span>
+        <span><span class="legend-line" style="background:#8b1a1a;border-top:2px dashed #8b1a1a;background:none;"></span>Inflation</span>
+        <span><span class="legend-box-sm" style="background:var(--crisis-bg);border:1px solid rgba(192,57,43,0.3);"></span>Crisis year</span>
+        <span><span class="legend-line" style="background:#ccc;border-top:1px dashed #ccc;background:none;"></span>GDP = 2% threshold</span>
+      </div>
+    </div>
+
+    <!-- Forex -->
+    <div class="chart-panel">
+      <div class="chart-header">
+        <span class="chart-title">Forex reserves — months of import cover</span>
+        <span class="chart-note">threshold: 7 months</span>
+      </div>
+      <div class="chart-body">
+        <div style="position:relative;height:220px;">
+          <canvas id="c2" role="img" aria-label="Forex reserves months of import cover 1995-2024">Forex reserves.</canvas>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="legend-box-sm" style="background:#2c7a4b;"></span>Above threshold</span>
+        <span><span class="legend-box-sm" style="background:var(--crisis);"></span>Below 7 months or crisis year</span>
+      </div>
+    </div>
+
+    <!-- Remittance -->
+    <div class="chart-panel">
+      <div class="chart-header">
+        <span class="chart-title">Remittance as % of GDP & YoY growth</span>
+        <span class="chart-note">threshold: drop > 20% YoY</span>
+      </div>
+      <div class="toggle-row">
+        <button class="pill on" id="p-rpct" onclick="toggleC3(0,this)">% of GDP</button>
+        <button class="pill on" id="p-ryoy" onclick="toggleC3(1,this)">YoY growth</button>
+      </div>
+      <div class="chart-body">
+        <div style="position:relative;height:220px;">
+          <canvas id="c3" role="img" aria-label="Remittance percent GDP and YoY growth 1995-2024">Remittance trends.</canvas>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="legend-line" style="background:#5a3e8b;height:2px;display:inline-block;"></span>% of GDP</span>
+        <span><span class="legend-line" style="background:#2c7a4b;height:2px;display:inline-block;"></span>YoY growth</span>
+      </div>
+    </div>
+
+    <!-- India GDP -->
+    <div class="chart-panel">
+      <div class="chart-header">
+        <span class="chart-title">India GDP growth — lag indicator</span>
+        <span class="chart-note">IMF verified · used as F09 / F10</span>
+      </div>
+      <div class="chart-body">
+        <div style="position:relative;height:200px;">
+          <canvas id="c4" role="img" aria-label="India GDP growth 1995-2024">India GDP growth.</canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Triggers -->
+    <div class="chart-panel">
+      <div class="chart-header">
+        <span class="chart-title">Triggers fired per year</span>
+        <span class="chart-note">crisis = any 2 of 5</span>
+      </div>
+      <div class="chart-body">
+        <div style="position:relative;height:180px;">
+          <canvas id="c5" role="img" aria-label="Number of crisis triggers fired per year 1995-2024">Triggers per year.</canvas>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="legend-box-sm" style="background:#1a4a7a;"></span>Non-crisis year</span>
+        <span><span class="legend-box-sm" style="background:var(--crisis);"></span>Crisis year (2+ triggers)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE SECTION -->
+  <div class="section" id="sec-table">
+    <p class="section-intro">
+      Full verified dataset with NRB-corrected values. Each row shows raw indicator values, which triggers fired, and the derived crisis label. Filter by crisis status or search by year.
+    </p>
+
+    <div class="table-controls">
+      <input type="text" class="search-box" id="search" placeholder="Search year..." oninput="filterTable()">
+      <button class="filter-btn active" id="f-all" onclick="setFilter('all',this)">All years</button>
+      <button class="filter-btn crisis-filter" id="f-crisis" onclick="setFilter('crisis',this)">Crisis only</button>
+      <button class="filter-btn" id="f-safe" onclick="setFilter('safe',this)">Non-crisis only</button>
+    </div>
+
+    <div class="chart-panel">
+      <div class="data-table-wrap">
+        <table id="data-table">
+          <thead>
+            <tr>
+              <th onclick="sortTable(0)">Year <span class="sort-arrow">↕</span></th>
+              <th onclick="sortTable(1)">GDP growth % <span class="sort-arrow">↕</span></th>
+              <th onclick="sortTable(2)">Inflation % <span class="sort-arrow">↕</span></th>
+              <th onclick="sortTable(3)">Forex (mo.) <span class="sort-arrow">↕</span></th>
+              <th onclick="sortTable(4)">Remit. % GDP <span class="sort-arrow">↕</span></th>
+              <th onclick="sortTable(5)">CA % GDP <span class="sort-arrow">↕</span></th>
+              <th onclick="sortTable(6)">Triggers <span class="sort-arrow">↕</span></th>
+              <th onclick="sortTable(7)">Status <span class="sort-arrow">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span id="row-count">30 rows</span>
+        <span>T1=GDP&lt;2% · T2=Forex&lt;7mo · T3=Inf&gt;8% · T4=Remit drop&gt;20% · T5=CA deficit&gt;10%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- METHODOLOGY SECTION -->
+  <div class="section" id="sec-methodology">
+    <p class="section-intro">
+      Crisis labels are derived strictly from threshold rules applied to verified indicator data. Labels are never pre-assigned. NRB values take precedence over World Bank when discrepancies exceed 0.5 percentage points.
+    </p>
+
+    <div style="margin-bottom:1.5rem;">
+      <div class="chart-header" style="border:1px solid var(--paper-rule);border-radius:4px 4px 0 0;padding:0.75rem 1.25rem;">
+        <span class="chart-title">Crisis trigger thresholds — locked</span>
+        <span class="chart-note">any 2 of 5 = crisis year</span>
+      </div>
+      <div class="threshold-grid" style="border-radius:0 0 4px 4px;border-top:none;">
+        <div class="threshold-card">
+          <div class="threshold-label">T1 · GDP growth</div>
+          <div class="threshold-rule">Below 2%</div>
+        </div>
+        <div class="threshold-card">
+          <div class="threshold-label">T2 · Forex reserves</div>
+          <div class="threshold-rule">Below 7 months import cover</div>
+        </div>
+        <div class="threshold-card">
+          <div class="threshold-label">T3 · Inflation</div>
+          <div class="threshold-rule">Above 8%</div>
+        </div>
+        <div class="threshold-card">
+          <div class="threshold-label">T4 · Remittances</div>
+          <div class="threshold-rule">Drop &gt; 20% YoY</div>
+        </div>
+        <div class="threshold-card">
+          <div class="threshold-label">T5 · Current account</div>
+          <div class="threshold-rule">Deficit &gt; 10% of GDP</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-panel">
+      <div class="chart-header">
+        <span class="chart-title">NRB overrides applied</span>
+        <span class="chart-note">discrepancy threshold: 0.5%</span>
+      </div>
+      <div class="chart-body">
+        <table style="width:100%;">
+          <thead>
+            <tr>
+              <th style="text-align:left;">Indicator</th>
+              <th>Year</th>
+              <th>World Bank</th>
+              <th>NRB / IMF</th>
+              <th>Diff</th>
+              <th style="text-align:left;">Source wins</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Nepal GDP growth</td><td>2015</td><td>3.98%</td><td>3.30%</td><td style="color:var(--crisis);">0.68%</td><td>NRB</td></tr>
+            <tr><td>Nepal inflation</td><td>2016</td><td>8.79%</td><td>9.90%</td><td style="color:var(--crisis);">1.11%</td><td>NRB</td></tr>
+            <tr><td>Nepal inflation</td><td>2022</td><td>7.67%</td><td>8.56%</td><td style="color:var(--crisis);">0.89%</td><td>NRB</td></tr>
+            <tr><td>Nepal inflation</td><td>2023</td><td>7.12%</td><td>7.74%</td><td style="color:var(--crisis);">0.62%</td><td>NRB</td></tr>
+            <tr><td>Nepal forex</td><td>2020</td><td>12.48 mo.</td><td>11.80 mo.</td><td style="color:var(--crisis);">0.68</td><td>NRB</td></tr>
+            <tr><td>Nepal forex</td><td>2024</td><td>12.97 mo.</td><td>12.00 mo.</td><td style="color:var(--crisis);">0.97</td><td>NRB</td></tr>
+            <tr><td>India GDP growth</td><td>2020</td><td>-5.78%</td><td>-6.60%</td><td style="color:var(--crisis);">0.82%</td><td>IMF</td></tr>
+            <tr><td>India GDP growth</td><td>2021</td><td>9.69%</td><td>8.90%</td><td style="color:var(--crisis);">0.79%</td><td>IMF</td></tr>
+            <tr><td>Current account</td><td>2021</td><td>-14.52%</td><td>-12.80%</td><td style="color:var(--crisis);">1.72%</td><td>IMF</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="chart-panel">
+      <div class="chart-header">
+        <span class="chart-title">Data sources</span>
+      </div>
+      <div class="chart-body">
+        <table style="width:100%;">
+          <thead><tr><th style="text-align:left;">Indicator</th><th style="text-align:left;">Primary</th><th style="text-align:left;">Verification</th></tr></thead>
+          <tbody>
+            <tr><td>Nepal GDP growth</td><td>World Bank (NY.GDP.MKTP.KD.ZG)</td><td>NRB Annual Report</td></tr>
+            <tr><td>Nepal inflation</td><td>World Bank (FP.CPI.TOTL.ZG)</td><td>NRB Inflation Report</td></tr>
+            <tr><td>Forex reserves</td><td>World Bank (FI.RES.TOTL.MO)</td><td>NRB Annual Report</td></tr>
+            <tr><td>Remittances % GDP</td><td>World Bank (BX.TRF.PWKR.DT.GD.ZS)</td><td>NRB Annual Report</td></tr>
+            <tr><td>Current account</td><td>World Bank (BN.CAB.XOKA.GD.ZS)</td><td>IMF WEO</td></tr>
+            <tr><td>India GDP growth</td><td>World Bank (NY.GDP.MKTP.KD.ZG)</td><td>IMF WEO</td></tr>
+            <tr><td>India inflation</td><td>World Bank (FP.CPI.TOTL.ZG)</td><td>IMF WEO</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const years = [1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024];
+const gdp   = [3.47,5.33,5.05,3.02,4.41,6.2,4.8,0.12,3.95,4.68,3.48,3.36,3.41,6.1,4.53,4.82,3.42,4.67,3.53,6.01,3.3,0.43,8.98,7.62,6.66,-2.37,4.84,5.63,1.98,3.67];
+const inf   = [7.62,9.22,4.01,11.24,7.45,2.48,2.69,3.03,5.71,2.84,6.84,6.92,2.27,9.91,11.09,9.33,9.23,9.46,9.04,8.36,7.87,9.9,2.78,4.41,5.57,5.06,4.13,8.56,7.74,4.69];
+const forex = [4.67,4.26,4.14,6.57,6.15,6.49,7.37,7.41,7.71,7.74,6.7,7.67,6.46,6.62,6.57,6.01,6.74,7.61,8.57,8.44,12.53,10.29,9.35,6.61,7.46,11.8,6.72,7.12,10.42,12.0];
+const remitPct = [1.29,0.98,1.01,1.39,1.66,2.03,2.45,11.21,12.18,11.31,14.91,16.07,16.79,21.74,23.21,21.65,19.55,22.08,25.19,25.91,27.63,26.96,23.91,25.03,24.12,24.25,22.28,22.85,26.22,26.23];
+const remitYoy = [null,-22.28,12.0,36.49,23.64,33.59,31.83,null,13.65,6.68,47.31,19.92,19.31,57.29,9.39,16.11,21.73,13.65,16.51,5.46,14.29,-1.75,4.78,19.61,-0.51,-1.66,1.46,14.41,14.37,4.55];
+const indiaGdp = [7.57,7.55,4.05,6.18,8.85,3.84,4.82,3.8,7.86,7.92,7.92,8.06,7.66,3.09,7.86,8.5,5.24,5.46,6.39,7.41,8.0,8.26,6.8,6.45,3.87,-6.6,8.9,7.61,9.19,6.49];
+const ca    = [-8.1,-7.22,-7.89,-1.38,-1.56,-2.38,-2.74,3.56,2.85,1.37,1.88,1.66,0.05,5.85,0.17,-0.8,1.34,2.66,5.23,2.18,10.04,-0.68,-3.56,-8.3,-5.13,-0.25,-12.8,-5.77,2.45,3.91];
+const triggers=[1,3,1,2,1,1,0,1,0,0,1,0,1,2,2,2,2,1,1,1,0,2,0,1,0,1,2,1,1,0];
+const crisis  =[0,1,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,1,0,0,0,0,1,0,0,0];
+const t1=[0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,1,0];
+const t2=[1,1,1,1,1,1,0,0,0,0,1,0,1,1,1,1,1,0,0,0,0,0,0,1,0,0,1,0,0,0];
+const t3=[0,1,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,1,0,0,0,0,0,1,0,0];
+const t4=[0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+const t5=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0];
+
+const crisisBg = years.map((_,i)=>crisis[i]?'rgba(192,57,43,0.07)':'rgba(0,0,0,0)');
+const xTicks = {
+  font:{size:11,family:"'JetBrains Mono',monospace"},
+  maxRotation:45, autoSkip:false,
+  callback:(v,i)=>years[i]%5===0?years[i]:''
+};
+const grid = {color:'rgba(0,0,0,0.05)'};
+const tooltipDefaults = {
+  backgroundColor:'#fff',
+  titleColor:'#1a1a1a',
+  bodyColor:'#444',
+  borderColor:'#e8e4da',
+  borderWidth:1,
+  padding:10,
+  titleFont:{family:"'Lora',serif",size:13},
+  bodyFont:{family:"'JetBrains Mono',monospace",size:11},
+  cornerRadius:4
+};
+
+// Chart 1
+const chart1 = new Chart(document.getElementById('c1'),{
+  type:'line',
+  data:{
+    labels:years,
+    datasets:[
+      {label:'Crisis',data:years.map(()=>null),type:'bar',backgroundColor:crisisBg,barPercentage:1,categoryPercentage:1,order:3},
+      {label:'GDP growth',data:gdp,borderColor:'#1a4a7a',backgroundColor:'rgba(26,74,122,0.06)',borderWidth:2,pointRadius:3,pointHoverRadius:6,fill:false,tension:0.3,order:1},
+      {label:'Inflation',data:inf,borderColor:'#8b1a1a',backgroundColor:'rgba(139,26,26,0.04)',borderWidth:2,pointRadius:3,pointHoverRadius:6,fill:false,tension:0.3,borderDash:[6,3],order:2}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{display:false},
+      tooltip:{...tooltipDefaults,
+        callbacks:{
+          label:ctx=>{
+            if(ctx.datasetIndex===0)return null;
+            return ctx.dataset.label+': '+ctx.parsed.y.toFixed(2)+'%';
+          },
+          afterBody:items=>{
+            const i=items[0].dataIndex;
+            const lines=[];
+            if(crisis[i])lines.push('⚠ Crisis year');
+            lines.push('Triggers fired: '+triggers[i]);
+            return lines;
+          }
+        }
+      }
+    },
+    scales:{
+      x:{ticks:xTicks,grid},
+      y:{ticks:{font:{size:11,family:"'JetBrains Mono',monospace"}},grid,
+         title:{display:true,text:'%',font:{size:11},color:'#999'}}
+    }
+  }
+});
+
+function toggleC1(idx,btn){
+  const meta=chart1.getDatasetMeta(idx);
+  meta.hidden=!meta.hidden;
+  btn.classList.toggle('on');
+  chart1.update();
+}
+
+// Chart 2
+new Chart(document.getElementById('c2'),{
+  type:'bar',
+  data:{
+    labels:years,
+    datasets:[{
+      label:'Forex',
+      data:forex,
+      backgroundColor:forex.map((v,i)=>(crisis[i]||v<7)?'rgba(192,57,43,0.75)':'rgba(44,122,75,0.75)'),
+      borderWidth:0,borderRadius:2
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{...tooltipDefaults,callbacks:{
+        label:ctx=>'Forex: '+ctx.parsed.y.toFixed(2)+' months',
+        afterBody:items=>{
+          const i=items[0].dataIndex;
+          const lines=[];
+          if(crisis[i])lines.push('⚠ Crisis year');
+          if(forex[i]<7)lines.push('Below 7-month threshold');
+          return lines;
+        }
+      }}
+    },
+    scales:{
+      x:{ticks:xTicks,grid},
+      y:{min:0,max:14,ticks:{font:{size:11,family:"'JetBrains Mono',monospace"}},grid,
+         title:{display:true,text:'months',font:{size:11},color:'#999'}}
+    }
+  }
+});
+
+// Chart 3
+const chart3 = new Chart(document.getElementById('c3'),{
+  type:'line',
+  data:{
+    labels:years,
+    datasets:[
+      {label:'% of GDP',data:remitPct,borderColor:'#5a3e8b',backgroundColor:'rgba(90,62,139,0.07)',borderWidth:2,pointRadius:3,pointHoverRadius:5,fill:true,tension:0.3},
+      {label:'YoY growth',data:remitYoy,borderColor:'#2c7a4b',backgroundColor:'rgba(44,122,75,0.06)',borderWidth:2,pointRadius:3,pointHoverRadius:5,fill:false,tension:0.3,borderDash:[5,3]}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{display:false},
+      tooltip:{...tooltipDefaults,callbacks:{
+        label:ctx=>{
+          const v=ctx.parsed.y;
+          if(v===null)return ctx.dataset.label+': N/A';
+          return ctx.dataset.label+': '+v.toFixed(2)+'%';
+        }
+      }}
+    },
+    scales:{x:{ticks:xTicks,grid},y:{ticks:{font:{size:11,family:"'JetBrains Mono',monospace"}},grid}}
+  }
+});
+
+function toggleC3(idx,btn){
+  const meta=chart3.getDatasetMeta(idx);
+  meta.hidden=!meta.hidden;
+  btn.classList.toggle('on');
+  chart3.update();
+}
+
+// Chart 4
+new Chart(document.getElementById('c4'),{
+  type:'line',
+  data:{
+    labels:years,
+    datasets:[{
+      label:'India GDP growth',
+      data:indiaGdp,
+      borderColor:'#b07d2e',
+      backgroundColor:'rgba(176,125,46,0.07)',
+      borderWidth:2,pointRadius:3,pointHoverRadius:5,fill:true,tension:0.3
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{...tooltipDefaults,callbacks:{label:ctx=>'India GDP: '+ctx.parsed.y.toFixed(2)+'%'}}
+    },
+    scales:{x:{ticks:xTicks,grid},y:{ticks:{font:{size:11,family:"'JetBrains Mono',monospace"}},grid}}
+  }
+});
+
+// Chart 5
+new Chart(document.getElementById('c5'),{
+  type:'bar',
+  data:{
+    labels:years,
+    datasets:[{
+      label:'Triggers',
+      data:triggers,
+      backgroundColor:triggers.map((_,i)=>crisis[i]?'rgba(192,57,43,0.8)':'rgba(26,74,122,0.6)'),
+      borderWidth:0,borderRadius:2
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{...tooltipDefaults,callbacks:{
+        label:ctx=>'Triggers fired: '+ctx.parsed.y,
+        afterBody:items=>{
+          const i=items[0].dataIndex;
+          return crisis[i]?['⚠ Crisis year — threshold reached']:[];
+        }
+      }}
+    },
+    scales:{
+      x:{ticks:xTicks,grid},
+      y:{min:0,max:4,ticks:{stepSize:1,font:{size:11,family:"'JetBrains Mono',monospace"}},grid}
+    }
+  }
+});
+
+// Table
+let currentFilter='all';
+let currentSearch='';
+let sortCol=0, sortDir=1;
+
+function buildTable(){
+  const tbody=document.getElementById('table-body');
+  let rows=years.map((y,i)=>({y,i}));
+
+  if(currentFilter==='crisis') rows=rows.filter(r=>crisis[r.i]===1);
+  if(currentFilter==='safe') rows=rows.filter(r=>crisis[r.i]===0);
+  if(currentSearch) rows=rows.filter(r=>String(r.y).includes(currentSearch));
+
+  rows.sort((a,b)=>{
+    const vals=[
+      [a.y,b.y],
+      [gdp[a.i],gdp[b.i]],
+      [inf[a.i],inf[b.i]],
+      [forex[a.i],forex[b.i]],
+      [remitPct[a.i],remitPct[b.i]],
+      [ca[a.i],ca[b.i]],
+      [triggers[a.i],triggers[b.i]],
+      [crisis[a.i],crisis[b.i]]
+    ][sortCol];
+    return (vals[0]-vals[1])*sortDir;
+  });
+
+  tbody.innerHTML=rows.map(({y,i})=>{
+    const pips=[t1[i],t2[i],t3[i],t4[i],t5[i]].map(v=>`<span class="trigger-pip ${v?'pip-on':'pip-off'}"></span>`).join('');
+    const badge=crisis[i]
+      ?`<span class="badge badge-crisis">crisis</span>`
+      :`<span class="badge badge-safe">stable</span>`;
+    return `<tr class="${crisis[i]?'crisis-row':''}">
+      <td>${y}</td>
+      <td style="color:${gdp[i]<2?'var(--crisis)':'inherit'}">${gdp[i].toFixed(2)}</td>
+      <td style="color:${inf[i]>8?'var(--crisis)':'inherit'}">${inf[i].toFixed(2)}</td>
+      <td style="color:${forex[i]<7?'var(--crisis)':'inherit'}">${forex[i].toFixed(2)}</td>
+      <td>${remitPct[i].toFixed(2)}</td>
+      <td style="color:${ca[i]<-10?'var(--crisis)':'inherit'}">${ca[i].toFixed(2)}</td>
+      <td style="text-align:center;">${pips} <span style="font-size:11px;color:var(--ink-light);margin-left:4px;">${triggers[i]}/5</span></td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('row-count').textContent=rows.length+' rows shown';
+
+  document.querySelectorAll('thead th').forEach((th,j)=>{
+    th.classList.toggle('sorted',j===sortCol);
+    const arrow=th.querySelector('.sort-arrow');
+    if(arrow) arrow.textContent=j===sortCol?(sortDir===1?'↑':'↓'):'↕';
+  });
+}
+
+function setFilter(f,btn){
+  currentFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  buildTable();
+}
+
+function filterTable(){
+  currentSearch=document.getElementById('search').value;
+  buildTable();
+}
+
+function sortTable(col){
+  if(sortCol===col) sortDir*=-1;
+  else { sortCol=col; sortDir=1; }
+  buildTable();
+}
+
+buildTable();
+
+// Tabs
+function switchTab(id,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
